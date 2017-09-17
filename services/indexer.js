@@ -33,51 +33,52 @@ function scanDir(dir){
           // call recursive
           scanDir(full_path);
         }
-        i++;
-        if(i>10){
-          break;
-        }
       }
   });
 }
 
-function upsertMedia(song){
-  var id3 = nodeID3.read(song);
-  //console.log(id3)
-  
-  var song_name   = id3['title']   || path.basename(song,path.extname(song));
-  var album_name  = id3['album']   || path.basename(path.dirname(song));
-  var artist_name = id3['artist']  || path.basename(path.dirname(path.dirname(song)));
+function upsertMedia(song_path){
+  var id3 = nodeID3.read(song_path);  
+  var song_name   = id3['title']   || path.basename(song_path,path.extname(song_path));
+  var album_name  = id3['album']   || path.basename(path.dirname(song_path));
+  var artist_name = id3['artist']  || path.basename(path.dirname(path.dirname(song_path)));
   var genre_name  = id3['genre']   || false;
   
-  var artist_id,album_id,genre_id;
-  
-  //var song = getSong(song_name,artist_name,album_name);
-  /*
-  var s = new Song({
-    title:  song_name,
-    album:  album_name,
-    artist: artist_name,
-    genre:  genre_name
+
+  Promise.all([ getArtist(artist_name), getAlbum(album_name), getGenre(genre_name) ]).then((results) => { 
+    artist_id=results[0].id
+    album_id=results[1].id
+    genre_id=false;
+    if(genre_name){
+      grenre_id=results[2].id;
+    }
+    getSong(song_path,song_name,artist_id,album_id,genre_id);
   })
-  .save()
-	.then(function (song) {
-		console.log(song);
-	}).catch(function (error) {
+
+  
+
+}
+
+function getSong(song_path,song_name,artist_id,album_id,genre_id=false){
+  console.log("Upsert song:", song_name, ' path:', song_path, ' artist:', artist_id, ' album:', album_id, ' genre:',genre_id);
+  return new Song().where({'path': song_path})
+	.fetch()
+	.then(function(a){
+		if(!a){
+  		console.log("No song found, adding",song_name);
+  		if(genre_id){
+    		return Song.forge({'path':song_path, 'title': song_name, 'artist_id': artist_id, 'album_id': album_id, 'genre_id': genre_id}).save()  		
+  		}else{
+    		return Song.forge({'path':song_path, 'title': song_name, 'artist_id': artist_id, 'album_id': album_id, 'genre_id': genre_id}).save()	
+  		}
+		}
+	})
+	.catch(function (error) {
 		console.log(error);
 	});
-  */
-  getArtist(artist_name)
-  .then(getAlbum(album_name))
-  .then(getGenre(genre_name))
-  .then(getSong( song_name,artist_id ));
+}
+
   
-
-}
-
-function getSong(a,artist_id){
-  console.log(a,artist_id);
-}
 
 
 function getArtist(artist){
@@ -86,13 +87,7 @@ function getArtist(artist){
 	.then(function(a){
 		if(!a){
   		console.log("No artist found, adding",artist);
-  		return Artist.forge({title:artist}).save().then(function(a){
-    		artist_id=a.id
-  		});
-		}else{
-  		console.log("Found artist, set it to:",a.id);
-  		artist_id=a.id
-  		return;
+  		return Artist.forge({title:artist}).save()
 		}
 	})
 	.catch(function (error) {
