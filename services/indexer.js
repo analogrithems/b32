@@ -87,8 +87,10 @@ function getArtist(artist){
 	.then(function(a){
 		if(!a){
   		console.log("No artist found, adding",artist);
-  		return Artist.forge({title:artist}).save()
+  		return new Artist({title:artist}).save()
 		}
+		console.log("Found artist, return that");
+		return new Promise((f) => { f(a); })
 	})
 	.catch(function (error) {
 		console.log(error);
@@ -100,7 +102,7 @@ function getAlbum(album){
 	.fetch()
 	.then(function(model){
 		if(!model){
-  		return Album.forge({title:album})
+  		return Album({title:album})
   		  .save()
   		  .then(function(model){
     		  return model;
@@ -124,7 +126,7 @@ function getGenre(_Genre){
 	.then(function(model){
 		if(!model){
   		console.log("No album  found, adding",artist);
-  		return Genre.forge({title:genre})
+  		return Genre({title:genre})
   		  .save()
   		  .then(function(model){
     		  return model;
